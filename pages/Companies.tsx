@@ -1,39 +1,52 @@
 
 import React, { useState } from 'react';
-import { db } from '../store';
+import { useData } from '../src/contexts/DataContext';
 import { Company, Contact } from '../types';
 import { Plus, Building2, User, Phone, Mail, Search, ExternalLink, Trash2, UserPlus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Companies: React.FC = () => {
-  const [companies, setCompanies] = useState<Company[]>(db.getCompanies());
+  const { companies, addCompany } = useData();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     segment: '',
     contacts: [{ id: crypto.randomUUID(), name: '', email: '', whatsapp: '', role: '' }] as Contact[]
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
-    
-    const validContacts = formData.contacts.filter(c => c.name.trim() !== '');
-    
-    const newCompany = db.addCompany({
-      ...formData,
-      contacts: validContacts
-    });
-    
-    setCompanies([...companies, newCompany]);
-    setIsModalOpen(false);
-    setFormData({ 
-      name: '', 
-      segment: '', 
-      contacts: [{ id: crypto.randomUUID(), name: '', email: '', whatsapp: '', role: '' }] 
-    });
+
+    setLoading(true);
+    try {
+      const validContacts = formData.contacts.filter(c => c.name.trim() !== '');
+
+      await addCompany({
+        ...formData,
+        contacts: validContacts.map(c => ({
+          name: c.name,
+          email: c.email,
+          whatsapp: c.whatsapp,
+          role: c.role
+        })) as any // Casting necessary as we are passing contacts structure slightly different from table
+      });
+
+      setIsModalOpen(false);
+      setFormData({
+        name: '',
+        segment: '',
+        contacts: [{ id: crypto.randomUUID(), name: '', email: '', whatsapp: '', role: '' }]
+      });
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao salvar empresa');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addContactRow = () => {
@@ -58,8 +71,8 @@ export const Companies: React.FC = () => {
     });
   };
 
-  const filtered = companies.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
+  const filtered = companies.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.segment?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -70,7 +83,7 @@ export const Companies: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900">Empresas</h1>
           <p className="text-slate-500">Banco de dados de patrocinadores e contatos.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-all"
         >
@@ -80,8 +93,8 @@ export const Companies: React.FC = () => {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-        <input 
-          type="text" 
+        <input
+          type="text"
           placeholder="Pesquisar por nome ou segmento..."
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -93,15 +106,15 @@ export const Companies: React.FC = () => {
         {filtered.map(company => (
           <div key={company.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow relative group">
             <div className="flex justify-between items-start mb-4">
-               <div>
-                  <h2 className="text-lg font-bold text-slate-800">{company.name}</h2>
-                  <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-semibold uppercase">{company.segment || 'Sem Segmento'}</span>
-               </div>
-               <Link to={`/companies/${company.id}`} className="text-blue-500 p-2 hover:bg-blue-50 rounded-lg transition-colors">
-                  <ExternalLink className="w-4 h-4" />
-               </Link>
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">{company.name}</h2>
+                <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-semibold uppercase">{company.segment || 'Sem Segmento'}</span>
+              </div>
+              <Link to={`/companies/${company.id}`} className="text-blue-500 p-2 hover:bg-blue-50 rounded-lg transition-colors">
+                <ExternalLink className="w-4 h-4" />
+              </Link>
             </div>
-            
+
             <div className="space-y-3 text-sm text-slate-600">
               {company.contacts.length > 0 ? (
                 <div className="space-y-2">
@@ -124,7 +137,7 @@ export const Companies: React.FC = () => {
         ))}
         {filtered.length === 0 && (
           <div className="col-span-full py-20 text-center text-slate-400">
-             Nenhuma empresa encontrada.
+            Nenhuma empresa encontrada.
           </div>
         )}
       </div>
@@ -138,28 +151,28 @@ export const Companies: React.FC = () => {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-8 flex-1 overflow-y-auto space-y-8">
               <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nome da Empresa *</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                  <input
+                    required
+                    type="text"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Ex: Coca-Cola"
-                    className="w-full bg-white border border-slate-200 text-slate-900 rounded-lg px-4 py-2.5 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 placeholder:text-slate-400 transition-all" 
+                    className="w-full bg-white border border-slate-200 text-slate-900 rounded-lg px-4 py-2.5 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 placeholder:text-slate-400 transition-all"
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Segmento</label>
-                  <input 
-                    type="text" 
-                    value={formData.segment} 
-                    onChange={e => setFormData({...formData, segment: e.target.value})} 
-                    className="w-full bg-white border border-slate-200 text-slate-900 rounded-lg px-4 py-2.5 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 placeholder:text-slate-400 transition-all" 
-                    placeholder="Ex: Tecnologia" 
+                  <input
+                    type="text"
+                    value={formData.segment}
+                    onChange={e => setFormData({ ...formData, segment: e.target.value })}
+                    className="w-full bg-white border border-slate-200 text-slate-900 rounded-lg px-4 py-2.5 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 placeholder:text-slate-400 transition-all"
+                    placeholder="Ex: Tecnologia"
                   />
                 </div>
               </div>
@@ -169,7 +182,7 @@ export const Companies: React.FC = () => {
                   <h4 className="text-sm font-bold text-slate-800 uppercase tracking-tight flex items-center gap-2">
                     <UserPlus className="w-4 h-4 text-blue-500" /> Contatos da Empresa
                   </h4>
-                  <button 
+                  <button
                     type="button"
                     onClick={addContactRow}
                     className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-colors flex items-center gap-1"
@@ -184,7 +197,7 @@ export const Companies: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nome do Contato</label>
-                          <input 
+                          <input
                             placeholder="Nome Completo"
                             value={contact.name}
                             onChange={e => updateContact(contact.id, 'name', e.target.value)}
@@ -193,7 +206,7 @@ export const Companies: React.FC = () => {
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
-                          <input 
+                          <input
                             placeholder="Ex: Gerente Comercial"
                             value={contact.role}
                             onChange={e => updateContact(contact.id, 'role', e.target.value)}
@@ -202,7 +215,7 @@ export const Companies: React.FC = () => {
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">E-mail</label>
-                          <input 
+                          <input
                             placeholder="contato@empresa.com"
                             type="email"
                             value={contact.email}
@@ -212,7 +225,7 @@ export const Companies: React.FC = () => {
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">WhatsApp / Telefone</label>
-                          <input 
+                          <input
                             placeholder="(00) 00000-0000"
                             value={contact.whatsapp}
                             onChange={e => updateContact(contact.id, 'whatsapp', e.target.value)}
@@ -221,7 +234,7 @@ export const Companies: React.FC = () => {
                         </div>
                       </div>
                       {formData.contacts.length > 1 && (
-                        <button 
+                        <button
                           type="button"
                           onClick={() => removeContactRow(contact.id)}
                           className="absolute -top-2 -right-2 bg-white border border-slate-100 text-slate-400 p-1.5 rounded-full hover:text-red-500 hover:border-red-100 shadow-sm transition-all"
@@ -236,7 +249,7 @@ export const Companies: React.FC = () => {
 
               <div className="pt-6 flex gap-4 border-t border-slate-100">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">Salvar Empresa</button>
+                <button type="submit" disabled={loading} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all disabled:opacity-50">{loading ? 'Salvando...' : 'Salvar Empresa'}</button>
               </div>
             </form>
           </div>
