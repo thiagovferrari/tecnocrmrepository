@@ -175,10 +175,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updateRelation = async (id: string, updates: Partial<EventCompany>) => {
-        await supabase.from('event_companies').update({
+        console.log('📤 Atualizando relação:', id, updates);
+
+        const { error } = await supabase.from('event_companies').update({
             ...updates,
             updated_at: new Date().toISOString()
         }).eq('id', id);
+
+        if (error) {
+            console.error('❌ ERRO ao atualizar relação:', error);
+            throw new Error(`Erro ao atualizar: ${error.message}`);
+        }
+
+        console.log('✅ Relação atualizada com sucesso');
     };
 
     return (
