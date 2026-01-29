@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Building2, Settings, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, Building2, Settings, Menu, X, LogOut, Archive } from 'lucide-react';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useAuth } from '../src/contexts/AuthContext';
 
@@ -14,6 +14,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Eventos', icon: Calendar, path: '/events' },
     { name: 'Empresas', icon: Building2, path: '/companies' },
+    { name: 'Arquivados', icon: Archive, path: '/archived' },
   ];
 
   return (

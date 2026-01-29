@@ -454,12 +454,25 @@ const EditRelationModal: React.FC<{ relationId: string; onClose: () => void; }> 
   const company = companies.find(c => c.id === rel?.company_id);
   const [loading, setLoading] = useState(false);
 
+  // Helper function to convert date from ISO to YYYY-MM-DD (local time, no timezone offset)
+  const formatDateForInput = (dateStr?: string) => {
+    if (!dateStr) return '';
+    // Se a data já está no formato YYYY-MM-DD, retorna direto
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    // Caso contrário, converte da ISO para local
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
     status: rel?.status || SponsorshipStatus.CONTATO_FEITO,
     value_expected: rel?.value_expected || 0,
     value_closed: rel?.value_closed || 0,
     next_action: rel?.next_action || '',
-    next_action_date: rel?.next_action_date || '',
+    next_action_date: formatDateForInput(rel?.next_action_date), // Preserva a data existente
     responsible: rel?.responsible || ''
   });
 

@@ -17,6 +17,7 @@ export interface Event {
   city?: string;
   venue?: string;
   notes?: string;
+  archived?: boolean;
   created_at: string;
 }
 
@@ -35,6 +36,7 @@ export interface Company {
   notes?: string;
   tags?: string[];
   contacts: Contact[];
+  archived?: boolean;
   created_at: string;
 }
 
@@ -48,6 +50,7 @@ export interface EventCompany {
   next_action?: string;
   next_action_date?: string;
   responsible?: string;
+  archived?: boolean;
   updated_at: string;
   created_at: string;
 }

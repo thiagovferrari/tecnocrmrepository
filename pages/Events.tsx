@@ -1,11 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { useData } from '../src/contexts/DataContext';
-import { Plus, Calendar, MapPin, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Plus, Calendar, MapPin, ChevronRight, X, Loader2, Archive } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Events: React.FC = () => {
-  const { events, addEvent, loading: dataLoading } = useData();
+  const { events, addEvent, archiveEvent, loading: dataLoading } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -18,13 +18,15 @@ export const Events: React.FC = () => {
     notes: ''
   });
 
-  // Sort events by start_date (ascending)
+  // Sort events by start_date (ascending) and filter out archived
   const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => {
-      if (!a.start_date) return 1;
-      if (!b.start_date) return -1;
-      return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-    });
+    return [...events]
+      .filter(e => !e.archived)
+      .sort((a, b) => {
+        if (!a.start_date) return 1;
+        if (!b.start_date) return -1;
+        return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+      });
   }, [events]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,6 +112,20 @@ export const Events: React.FC = () => {
               >
                 Ver Patrocinadores <ChevronRight className="w-4 h-4" />
               </Link>
+              <button
+                onClick={async () => {
+                  try {
+                    await archiveEvent(event.id);
+                  } catch (error) {
+                    console.error(error);
+                    alert('Erro ao arquivar evento');
+                  }
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-lg"
+                title="Arquivar evento"
+              >
+                <Archive className="w-4 h-4" />
+              </button>
             </div>
           </div>
         ))}

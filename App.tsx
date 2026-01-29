@@ -7,6 +7,7 @@ import { Events } from './pages/Events';
 import { EventDetail } from './pages/EventDetail';
 import { Companies } from './pages/Companies';
 import { CompanyDetail } from './pages/CompanyDetail';
+import { Archived } from './pages/Archived';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -71,6 +72,14 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <CompanyDetail />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/archived" element={
+              <PrivateRoute>
+                <Layout>
+                  <Archived />
                 </Layout>
               </PrivateRoute>
             } />

@@ -11,10 +11,19 @@ interface DataContextType {
     loading: boolean;
     addEvent: (event: Omit<Event, 'id' | 'created_at'>) => Promise<void>;
     addCompany: (company: Omit<Company, 'id' | 'created_at'>) => Promise<Company>;
+    updateCompany: (id: string, company: Partial<Company>) => Promise<void>;
+    deleteCompany: (id: string) => Promise<void>;
     addRelation: (relation: Omit<EventCompany, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
     updateRelation: (id: string, updates: Partial<EventCompany>) => Promise<void>;
     updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
     deleteEvent: (id: string) => Promise<void>;
+    archiveEvent: (id: string) => Promise<void>;
+    unarchiveEvent: (id: string) => Promise<void>;
+    archiveCompany: (id: string) => Promise<void>;
+    unarchiveCompany: (id: string) => Promise<void>;
+    archiveRelation: (id: string) => Promise<void>;
+    unarchiveRelation: (id: string) => Promise<void>;
+    deleteRelation: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -25,10 +34,19 @@ const DataContext = createContext<DataContextType>({
     loading: true,
     addEvent: async () => { },
     addCompany: async () => { return {} as Company; },
+    updateCompany: async () => { },
+    deleteCompany: async () => { },
     addRelation: async () => { },
     updateRelation: async () => { },
     updateEvent: async () => { },
     deleteEvent: async () => { },
+    archiveEvent: async () => { },
+    unarchiveEvent: async () => { },
+    archiveCompany: async () => { },
+    unarchiveCompany: async () => { },
+    archiveRelation: async () => { },
+    unarchiveRelation: async () => { },
+    deleteRelation: async () => { },
 });
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -190,8 +208,70 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ Relação atualizada com sucesso');
     };
 
+    // --- NOVAS FUNÇÕES ---
+
+    const updateCompany = async (id: string, company: Partial<Company>) => {
+        const { error } = await supabase.from('companies').update(company).eq('id', id);
+        if (error) throw error;
+    };
+
+    const deleteCompany = async (id: string) => {
+        const { error } = await supabase.from('companies').delete().eq('id', id);
+        if (error) throw error;
+    };
+
+    const archiveEvent = async (id: string) => {
+        await supabase.from('events').update({ archived: true }).eq('id', id);
+    };
+
+    const unarchiveEvent = async (id: string) => {
+        await supabase.from('events').update({ archived: false }).eq('id', id);
+    };
+
+    const archiveCompany = async (id: string) => {
+        await supabase.from('companies').update({ archived: true }).eq('id', id);
+    };
+
+    const unarchiveCompany = async (id: string) => {
+        await supabase.from('companies').update({ archived: false }).eq('id', id);
+    };
+
+    const archiveRelation = async (id: string) => {
+        await supabase.from('event_companies').update({ archived: true }).eq('id', id);
+    };
+
+    const unarchiveRelation = async (id: string) => {
+        await supabase.from('event_companies').update({ archived: false }).eq('id', id);
+    };
+
+    const deleteRelation = async (id: string) => {
+        const { error } = await supabase.from('event_companies').delete().eq('id', id);
+        if (error) throw error;
+    };
+
     return (
-        <DataContext.Provider value={{ events, companies, relations, contacts, loading, addEvent, addCompany, addRelation, updateRelation, updateEvent, deleteEvent }}>
+        <DataContext.Provider value={{
+            events,
+            companies,
+            relations,
+            contacts,
+            loading,
+            addEvent,
+            addCompany,
+            updateCompany,
+            deleteCompany,
+            addRelation,
+            updateRelation,
+            updateEvent,
+            deleteEvent,
+            archiveEvent,
+            unarchiveEvent,
+            archiveCompany,
+            unarchiveCompany,
+            archiveRelation,
+            unarchiveRelation,
+            deleteRelation
+        }}>
             {children}
         </DataContext.Provider>
     );
