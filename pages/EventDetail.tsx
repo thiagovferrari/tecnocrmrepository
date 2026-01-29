@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useData } from '../contexts/DataContext';
+import { useData } from '../src/contexts/DataContext';
 import { SponsorshipStatus, Contact } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { ArrowLeft, Search, Plus, Download, Edit3, Save, X, UserPlus, Trash2, MapPin, Calendar, Loader2 } from 'lucide-react';
@@ -202,11 +202,6 @@ export const EventDetail: React.FC = () => {
         <AddRelationModal
           eventId={event.id}
           onClose={() => setIsAddModalOpen(false)}
-          onAdded={() => {
-            setRelations(db.getRelations().filter(r => r.event_id === event.id));
-            setCompanies(db.getCompanies());
-            setIsAddModalOpen(false);
-          }}
         />
       )}
 
@@ -215,20 +210,17 @@ export const EventDetail: React.FC = () => {
         <EditRelationModal
           relationId={isEditModalOpen}
           onClose={() => setIsEditModalOpen(null)}
-          onUpdated={() => {
-            setRelations(db.getRelations().filter(r => r.event_id === event.id));
-            setIsEditModalOpen(null);
-          }}
         />
       )}
     </div>
   );
 };
 
-const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; onAdded: () => void }> = ({ eventId, onClose, onAdded }) => {
-  const existingCompanies = db.getCompanies();
+const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; }> = ({ eventId, onClose }) => {
+  const { companies: existingCompanies, addCompany, addRelation } = useData();
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [isCreatingCompany, setIsCreatingCompany] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [newCompanyData, setNewCompanyData] = useState({
     name: '',
@@ -262,24 +254,29 @@ const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; onAdded
     });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    setError('');
+    setLoading(true);
     try {
       let finalCompanyId = selectedCompanyId;
+
       if (isCreatingCompany) {
         if (!newCompanyData.name) throw new Error('Dê um nome para a empresa.');
 
         const validContacts = newCompanyData.contacts.filter(c => c.name.trim() !== '');
-        const c = db.addCompany({
+
+        const newCompany = await addCompany({
           name: newCompanyData.name,
           segment: newCompanyData.segment,
-          contacts: validContacts
+          contacts: validContacts as any
         });
-        finalCompanyId = c.id;
+
+        finalCompanyId = newCompany?.id;
       }
 
-      if (!finalCompanyId) throw new Error('Selecione ou crie uma empresa.');
+      if (!finalCompanyId && !isCreatingCompany) throw new Error('Selecione uma empresa.');
 
-      db.addRelation({
+      await addRelation({
         event_id: eventId,
         company_id: finalCompanyId,
         status: status,
@@ -288,9 +285,12 @@ const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; onAdded
         next_action_date: '',
         responsible: ''
       });
-      onAdded();
+      onClose();
     } catch (e: any) {
-      setError(e.message);
+      console.error(e);
+      setError(e.message || 'Erro ao vincular.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -448,9 +448,11 @@ const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; onAdded
   );
 };
 
-const EditRelationModal: React.FC<{ relationId: string; onClose: () => void; onUpdated: () => void }> = ({ relationId, onClose, onUpdated }) => {
-  const rel = db.getRelations().find(r => r.id === relationId);
-  const company = db.getCompanies().find(c => c.id === rel?.company_id);
+const EditRelationModal: React.FC<{ relationId: string; onClose: () => void; }> = ({ relationId, onClose }) => {
+  const { relations, companies, updateRelation } = useData();
+  const rel = relations.find(r => r.id === relationId);
+  const company = companies.find(c => c.id === rel?.company_id);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     status: rel?.status || SponsorshipStatus.CONTATO_FEITO,
@@ -463,9 +465,17 @@ const EditRelationModal: React.FC<{ relationId: string; onClose: () => void; onU
 
   if (!rel) return null;
 
-  const handleSave = () => {
-    db.updateRelation(relationId, formData);
-    onUpdated();
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await updateRelation(relationId, formData);
+      onClose();
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao atualizar.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
