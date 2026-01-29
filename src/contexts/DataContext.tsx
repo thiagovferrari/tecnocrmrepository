@@ -162,7 +162,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const addRelation = async (relation: Omit<EventCompany, 'id' | 'created_at' | 'updated_at'>) => {
-        await supabase.from('event_companies').insert([relation]);
+        console.log('📤 Tentando vincular empresa ao evento:', relation);
+
+        const { data, error } = await supabase.from('event_companies').insert([relation]).select();
+
+        if (error) {
+            console.error('❌ ERRO ao vincular empresa:', error);
+            throw new Error(`Erro ao vincular: ${error.message}`);
+        }
+
+        console.log('✅ Empresa vinculada com sucesso:', data);
     };
 
     const updateRelation = async (id: string, updates: Partial<EventCompany>) => {
