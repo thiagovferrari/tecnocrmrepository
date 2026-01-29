@@ -10,7 +10,7 @@ interface DataContextType {
     contacts: Contact[];
     loading: boolean;
     addEvent: (event: Omit<Event, 'id' | 'created_at'>) => Promise<void>;
-    addCompany: (company: Omit<Company, 'id' | 'created_at'>) => Promise<void>;
+    addCompany: (company: Omit<Company, 'id' | 'created_at'>) => Promise<Company>;
     addRelation: (relation: Omit<EventCompany, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
     updateRelation: (id: string, updates: Partial<EventCompany>) => Promise<void>;
     updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
@@ -24,7 +24,7 @@ const DataContext = createContext<DataContextType>({
     contacts: [],
     loading: true,
     addEvent: async () => { },
-    addCompany: async () => { },
+    addCompany: async () => { return {} as Company; },
     addRelation: async () => { },
     updateRelation: async () => { },
     updateEvent: async () => { },
@@ -45,8 +45,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: relationsData } = await supabase.from('event_companies').select('*');
         const { data: contactsData } = await supabase.from('contacts').select('*');
 
+        // Manually join contacts to companies
+        const companiesWithContacts = (companiesData || []).map(comp => ({
+            ...comp,
+            contacts: (contactsData || []).filter(c => c.company_id === comp.id)
+        }));
+
         setEvents(eventsData || []);
-        setCompanies(companiesData || []);
+        setCompanies(companiesWithContacts);
         setRelations(relationsData || []);
         setContacts(contactsData || []);
         setLoading(false);
@@ -128,7 +134,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.from('events').delete().eq('id', id);
     }
 
-    const addCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+    const addCompany = async (company: Omit<Company, 'id' | 'created_at'>): Promise<Company> => {
         // Separate contacts from company data if needed, or assume company object matches
         // But table 'companies' has 'tags', etc. 'contacts' is a separate table.
         // The previous store had nested contacts. Supabase needs separate inserts.
@@ -139,16 +145,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error || !data) throw error;
 
-        const newCompanyId = data[0].id;
+        const newCompany = data[0];
 
         // Insert contacts if any
         if (contacts && contacts.length > 0) {
             const contactsToInsert = contacts.map((c: any) => ({
                 ...c,
-                company_id: newCompanyId,
+                company_id: newCompany.id,
             }));
             await supabase.from('contacts').insert(contactsToInsert);
         }
+
+        // Return the company object (without contacts for now, or fetch them if needed contextually)
+        // Ideally we should return with contacts but for ID usage this is enough.
+        return newCompany as Company;
     };
 
     const addRelation = async (relation: Omit<EventCompany, 'id' | 'created_at' | 'updated_at'>) => {

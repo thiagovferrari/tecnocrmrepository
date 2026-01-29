@@ -116,7 +116,7 @@ export const Companies: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-sm text-slate-600">
-              {company.contacts.length > 0 ? (
+              {company.contacts && company.contacts.length > 0 ? (
                 <div className="space-y-2">
                   {company.contacts.slice(0, 2).map(contact => (
                     <div key={contact.id} className="flex items-center gap-2 border-b border-slate-50 pb-1">
