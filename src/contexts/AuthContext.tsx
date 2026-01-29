@@ -24,9 +24,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         // Check active sessions and sets the user
+        // Check active sessions and sets the user
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            setLoading(false);
+        }).catch((err) => {
+            console.error("Auth session check failed:", err);
             setLoading(false);
         });
 
