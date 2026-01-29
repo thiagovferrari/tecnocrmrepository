@@ -1,40 +1,47 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { db } from '../store';
+import React, { useState, useMemo } from 'react';
+import { useData } from '../src/contexts/DataContext';
 import { SponsorshipStatus } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
-import { AlertCircle, Clock, TrendingUp, Users, DollarSign, Calendar as CalendarIcon, MapPin, ChevronDown } from 'lucide-react';
+import { AlertCircle, Clock, TrendingUp, Users, DollarSign, Calendar as CalendarIcon, MapPin, ChevronDown, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
-  const events = useMemo(() => {
-    return [...db.getEvents()].sort((a, b) => {
+  const { events, companies, relations, loading } = useData();
+
+  // Default to the first event if available, otherwise 'all'
+  const [selectedEventId, setSelectedEventId] = useState<string>('all');
+
+  // Update selected event if needed when events arrive
+  React.useEffect(() => {
+    if (events.length > 0 && selectedEventId === 'all') {
+      // Optionally default to first? The user previously default to first.
+      setSelectedEventId(events[0].id);
+    }
+  }, [events]);
+
+  const sortedEvents = useMemo(() => {
+    return [...events].sort((a, b) => {
       if (!a.start_date) return 1;
       if (!b.start_date) return -1;
       return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
     });
-  }, []);
-  
-  const relations = db.getRelations();
-  const companies = db.getCompanies();
-
-  // Default to the first event if available, otherwise 'all'
-  const [selectedEventId, setSelectedEventId] = useState<string>(events.length > 0 ? events[0].id : 'all');
+  }, [events]);
 
   const selectedEvent = useMemo(() => {
     return events.find(e => e.id === selectedEventId);
   }, [selectedEventId, events]);
 
   const filteredRelations = useMemo(() => {
-    return selectedEventId === 'all' 
-      ? relations 
+    return selectedEventId === 'all'
+      ? relations
       : relations.filter(r => r.event_id === selectedEventId);
   }, [selectedEventId, relations]);
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
     Object.values(SponsorshipStatus).forEach(s => counts[s] = 0);
-    
+
     let totalExpected = 0;
     let totalClosed = 0;
 
@@ -63,6 +70,10 @@ export const Dashboard: React.FC = () => {
     return `${s} a ${new Date(end).toLocaleDateString()}`;
   };
 
+  if (loading) {
+    return <div className="flex justify-center p-20"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Prominent Event Selector */}
@@ -78,13 +89,13 @@ export const Dashboard: React.FC = () => {
               Evento em Foco
             </label>
             <div className="relative">
-              <select 
+              <select
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(e.target.value)}
                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-slate-700 appearance-none focus:border-blue-500 focus:ring-0 outline-none transition-all cursor-pointer"
               >
                 <option value="all">📊 Visão Geral (Todos)</option>
-                {events.map(e => (
+                {sortedEvents.map(e => (
                   <option key={e.id} value={e.id}>📅 {e.name}</option>
                 ))}
               </select>
@@ -217,13 +228,13 @@ export const Dashboard: React.FC = () => {
                     </div>
                     <p className="text-sm font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">{r.next_action}</p>
                     {selectedEventId === 'all' && (
-                       <p className="text-[9px] text-slate-400 italic">No evento: {getEventName(r.event_id)}</p>
+                      <p className="text-[9px] text-slate-400 italic">No evento: {getEventName(r.event_id)}</p>
                     )}
                   </div>
                   <div className="text-right shrink-0">
                     <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100">
                       <p className="text-[10px] font-black uppercase leading-none mb-0.5">Prazo</p>
-                      <p className="text-xs font-bold">{r.next_action_date ? new Date(r.next_action_date).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) : '--/--'}</p>
+                      <p className="text-xs font-bold">{r.next_action_date ? new Date(r.next_action_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '--/--'}</p>
                     </div>
                   </div>
                 </div>
