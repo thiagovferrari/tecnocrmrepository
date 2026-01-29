@@ -282,7 +282,7 @@ const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; }> = ({
         status: status,
         value_expected: Number(expectedValue) || 0,
         next_action: '',
-        next_action_date: '',
+        next_action_date: null, // ← ERA '' AGORA É null!
         responsible: ''
       });
       onClose();
