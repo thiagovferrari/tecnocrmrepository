@@ -5,6 +5,7 @@ import { useData } from '../src/contexts/DataContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { ArrowLeft, Building2, Mail, Phone, Calendar, Tag, User, Users, Loader2, Edit3, Trash2, X, AlertCircle, UserPlus } from 'lucide-react';
 import { Contact } from '../types';
+import { formatDateDisplay } from '../src/utils/dateUtils';
 
 export const CompanyDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -160,7 +161,7 @@ export const CompanyDetail: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-slate-400 font-bold uppercase mb-1">Última Atu.</p>
-                        <p className="text-sm font-medium">{new Date(rel.updated_at).toLocaleDateString()}</p>
+                        <p className="text-sm font-medium">{formatDateDisplay(rel.updated_at)}</p>
                       </div>
                     </div>
 

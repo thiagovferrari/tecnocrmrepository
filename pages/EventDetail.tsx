@@ -169,7 +169,7 @@ export const EventDetail: React.FC = () => {
                     </td>
                     <td className="px-6 py-5 max-w-xs">
                       <p className="text-sm text-slate-600 truncate font-medium">{rel.next_action || '-'}</p>
-                      <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tight">{rel.next_action_date ? new Date(rel.next_action_date).toLocaleDateString() : ''}</p>
+                      <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tight">{formatDateDisplay(rel.next_action_date)}</p>
                     </td>
                     <td className="px-6 py-5">
                       <p className="text-sm font-bold text-slate-800">R$ {rel.value_expected?.toLocaleString() || '0'}</p>
