@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
     user: User | null;
@@ -23,7 +24,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active sessions and sets the user
         // Check active sessions and sets the user
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
@@ -50,7 +50,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return (
         <AuthContext.Provider value={{ user, session, loading, signOut }}>
-            {!loading && children}
+            {loading ? (
+                <div className="min-h-screen flex items-center justify-center bg-slate-50 text-blue-600 font-bold gap-2">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    Carregando Sistema...
+                </div>
+            ) : (
+                children
+            )}
         </AuthContext.Provider>
     );
 };

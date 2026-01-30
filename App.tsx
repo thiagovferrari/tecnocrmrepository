@@ -84,6 +84,7 @@ function App() {
               </PrivateRoute>
             } />
 
+
             <Route path="/settings" element={
               <PrivateRoute>
                 <Layout>
@@ -92,6 +93,7 @@ function App() {
               </PrivateRoute>
             } />
 
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </HashRouter>
       </DataProvider>
