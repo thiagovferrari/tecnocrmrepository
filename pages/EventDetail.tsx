@@ -4,6 +4,7 @@ import { useData } from '../src/contexts/DataContext';
 import { SponsorshipStatus, Contact } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { ArrowLeft, Search, Plus, Download, Edit3, Save, X, UserPlus, Trash2, MapPin, Calendar, Loader2 } from 'lucide-react';
+import { formatDateDisplay, formatDateForInput } from '../src/utils/dateUtils';
 
 export const EventDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,9 +37,9 @@ export const EventDetail: React.FC = () => {
 
   const formatDateRange = (start?: string, end?: string) => {
     if (!start) return 'Data não definida';
-    const s = new Date(start).toLocaleDateString();
+    const s = formatDateDisplay(start);
     if (!end || end === start) return s;
-    return `${s} - ${new Date(end).toLocaleDateString()}`;
+    return `${s} - ${formatDateDisplay(end)}`;
   };
 
   const exportToCSV = () => {
@@ -454,25 +455,12 @@ const EditRelationModal: React.FC<{ relationId: string; onClose: () => void; }> 
   const company = companies.find(c => c.id === rel?.company_id);
   const [loading, setLoading] = useState(false);
 
-  // Helper function to convert date from ISO to YYYY-MM-DD (local time, no timezone offset)
-  const formatDateForInput = (dateStr?: string) => {
-    if (!dateStr) return '';
-    // Se a data já está no formato YYYY-MM-DD, retorna direto
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-    // Caso contrário, converte da ISO para local
-    const date = new Date(dateStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const [formData, setFormData] = useState({
     status: rel?.status || SponsorshipStatus.CONTATO_FEITO,
     value_expected: rel?.value_expected || 0,
     value_closed: rel?.value_closed || 0,
     next_action: rel?.next_action || '',
-    next_action_date: formatDateForInput(rel?.next_action_date), // Preserva a data existente
+    next_action_date: formatDateForInput(rel?.next_action_date), // Usa o utilitário importado
     responsible: rel?.responsible || ''
   });
 

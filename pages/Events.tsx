@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../src/contexts/DataContext';
 import { Plus, Calendar, MapPin, ChevronRight, X, Loader2, Archive } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { formatDateDisplay } from '../src/utils/dateUtils';
 
 export const Events: React.FC = () => {
   const { events, addEvent, archiveEvent, loading: dataLoading } = useData();
@@ -48,9 +49,9 @@ export const Events: React.FC = () => {
 
   const formatDateRange = (start?: string, end?: string) => {
     if (!start) return 'Data não definida';
-    const s = new Date(start).toLocaleDateString();
+    const s = formatDateDisplay(start);
     if (!end || end === start) return s;
-    return `${s} - ${new Date(end).toLocaleDateString()}`;
+    return `${s} - ${formatDateDisplay(end)}`;
   };
 
   if (dataLoading && events.length === 0) {
