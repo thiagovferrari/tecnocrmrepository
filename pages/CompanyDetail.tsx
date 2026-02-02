@@ -285,13 +285,22 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
         if (contact.name.trim() === '') continue; // Skip empty contacts
 
         if (contact.isNew) {
-          // Add new contact
-          const { id, isNew, ...contactData } = contact;
-          await addContact({ ...contactData, company_id: company.id });
+          // Add new contact - remove the temporary id
+          await addContact({
+            name: contact.name,
+            email: contact.email || '',
+            whatsapp: contact.whatsapp || '',
+            role: contact.role || '',
+            company_id: company.id
+          });
         } else {
-          // Update existing contact
-          const { isNew, company_id, ...contactData } = contact;
-          await updateContact(contact.id, contactData);
+          // Update existing contact - only send the fields that can be updated
+          await updateContact(contact.id, {
+            name: contact.name,
+            email: contact.email || '',
+            whatsapp: contact.whatsapp || '',
+            role: contact.role || ''
+          });
         }
       }
 
