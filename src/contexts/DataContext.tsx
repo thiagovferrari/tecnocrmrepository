@@ -167,10 +167,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Insert contacts if any
         if (contacts && contacts.length > 0) {
-            const contactsToInsert = contacts.map((c: any) => ({
-                ...c,
-                company_id: newCompany.id,
-            }));
+            const contactsToInsert = contacts.map((c: any) => {
+                const { id, ...contactData } = c;  // Remove o id do frontend
+                return {
+                    ...contactData,
+                    company_id: newCompany.id,
+                };
+            });
             await supabase.from('contacts').insert(contactsToInsert);
         }
 
