@@ -26,8 +26,8 @@ interface DataContextType {
     deleteRelation: (id: string) => Promise<void>;
     // Contact management
     addContact: (contact: Omit<Contact, 'id'> & { company_id: string }) => Promise<void>;
-    updateContact: (id: string, updates: Partial<Contact>) => Promise<void>;
-    deleteContact: (id: string) => Promise<void>;
+    updateContact: (id: string, updates: Partial<Contact>, companyId?: string) => Promise<void>;
+    deleteContact: (id: string, companyId?: string) => Promise<void>;
     refreshCompanyContacts: (companyId: string) => Promise<void>;
 }
 
@@ -131,12 +131,39 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const contactsSubscription = supabase
             .channel('public:contacts')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, (payload) => {
+                const newContact = payload.new as Contact;
+                const oldContact = payload.old as Contact;
+
                 if (payload.eventType === 'INSERT') {
-                    setContacts(prev => [...prev, payload.new as Contact]);
+                    setContacts(prev => [...prev, newContact]);
+                    // Also update the company's contacts array
+                    if (newContact.company_id) {
+                        setCompanies(prev => prev.map(comp =>
+                            comp.id === newContact.company_id
+                                ? { ...comp, contacts: [...(comp.contacts || []), newContact] }
+                                : comp
+                        ));
+                    }
                 } else if (payload.eventType === 'UPDATE') {
-                    setContacts(prev => prev.map(item => item.id === payload.new.id ? payload.new as Contact : item));
+                    setContacts(prev => prev.map(item => item.id === newContact.id ? newContact : item));
+                    // Also update the company's contacts array
+                    if (newContact.company_id) {
+                        setCompanies(prev => prev.map(comp =>
+                            comp.id === newContact.company_id
+                                ? { ...comp, contacts: (comp.contacts || []).map(c => c.id === newContact.id ? newContact : c) }
+                                : comp
+                        ));
+                    }
                 } else if (payload.eventType === 'DELETE') {
-                    setContacts(prev => prev.filter(item => item.id !== payload.old.id));
+                    setContacts(prev => prev.filter(item => item.id !== oldContact.id));
+                    // Also update the company's contacts array
+                    if (oldContact.company_id) {
+                        setCompanies(prev => prev.map(comp =>
+                            comp.id === oldContact.company_id
+                                ? { ...comp, contacts: (comp.contacts || []).filter(c => c.id !== oldContact.id) }
+                                : comp
+                        ));
+                    }
                 }
             })
             .subscribe();

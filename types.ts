@@ -27,6 +27,7 @@ export interface Contact {
   email?: string;
   whatsapp?: string;
   role?: string;
+  company_id?: string;
 }
 
 export interface Company {
