@@ -21,7 +21,7 @@ export const Dashboard: React.FC = () => {
   }, [events]);
 
   const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => {
+    return [...events].filter(e => !e.archived).sort((a, b) => {
       if (!a.start_date) return 1;
       if (!b.start_date) return -1;
       return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
@@ -33,9 +33,10 @@ export const Dashboard: React.FC = () => {
   }, [selectedEventId, events]);
 
   const filteredRelations = useMemo(() => {
+    const activeRelations = relations.filter(r => !r.archived);
     return selectedEventId === 'all'
-      ? relations
-      : relations.filter(r => r.event_id === selectedEventId);
+      ? activeRelations
+      : activeRelations.filter(r => r.event_id === selectedEventId);
   }, [selectedEventId, relations]);
 
   const stats = useMemo(() => {

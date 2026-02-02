@@ -27,8 +27,8 @@ export const Settings: React.FC = () => {
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 flex items-start gap-3">
             <Database className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
             <div className="text-sm">
-               <p className="font-bold text-blue-700">Persistência Local</p>
-               <p className="text-blue-600">Seus dados estão sendo salvos no seu navegador (LocalStorage). Se você limpar os dados do navegador, o CRM será resetado.</p>
+              <p className="font-bold text-blue-700">Armazenamento na Nuvem</p>
+              <p className="text-blue-600">Seus dados estão sendo salvos no Supabase (banco de dados na nuvem). Seus dados estão seguros e sincronizados em tempo real.</p>
             </div>
           </div>
         </div>
@@ -45,7 +45,7 @@ export const Settings: React.FC = () => {
               <p className="font-bold text-slate-800">Redefinir Banco de Dados</p>
               <p className="text-sm text-slate-500">Apaga permanentemente todas as informações e volta ao estado inicial.</p>
             </div>
-            <button 
+            <button
               onClick={handleClearData}
               className="px-4 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg font-bold flex items-center gap-2 transition-colors"
             >
@@ -54,7 +54,7 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       </section>
-      
+
       <p className="text-center text-xs text-slate-400">TecnoCRM v0.1.0-MVP</p>
     </div>
   );

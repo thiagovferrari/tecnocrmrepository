@@ -72,8 +72,10 @@ export const Companies: React.FC = () => {
   };
 
   const filtered = companies.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.segment?.toLowerCase().includes(search.toLowerCase())
+    !c.archived && (
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.segment?.toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   return (
