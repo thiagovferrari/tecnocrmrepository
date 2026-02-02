@@ -241,10 +241,13 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
     notes: company.notes || ''
   });
 
-  // Local state for contacts editing
+  // Local state for contacts editing - mark existing contacts with isNew: false
   const [editableContacts, setEditableContacts] = useState<(Contact & { isNew?: boolean; company_id?: string })[]>(
-    company.contacts?.map((c: Contact) => ({ ...c })) || []
+    company.contacts?.map((c: Contact) => ({ ...c, isNew: false })) || []
   );
+
+  // Track which contacts were deleted
+  const [deletedContactIds, setDeletedContactIds] = useState<string[]>([]);
 
   const addNewContactRow = () => {
     setEditableContacts([
@@ -253,7 +256,11 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
     ]);
   };
 
-  const removeContactRow = (id: string) => {
+  const removeContactRow = (id: string, isNew?: boolean) => {
+    // If it's an existing contact (not new), track it for deletion
+    if (!isNew) {
+      setDeletedContactIds([...deletedContactIds, id]);
+    }
     setEditableContacts(editableContacts.filter(c => c.id !== id));
   };
 
@@ -269,23 +276,18 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
       // Update company basic info
       await updateCompany(company.id, formData);
 
-      // Get original contact IDs
-      const originalContactIds = company.contacts?.map((c: Contact) => c.id) || [];
-      const currentContactIds = editableContacts.filter(c => !c.isNew).map(c => c.id);
-
-      // Delete removed contacts
-      for (const originalId of originalContactIds) {
-        if (!currentContactIds.includes(originalId)) {
-          await deleteContact(originalId);
-        }
+      // Delete contacts that were removed by the user
+      for (const contactId of deletedContactIds) {
+        await deleteContact(contactId);
       }
 
-      // Update existing and add new contacts
+      // Process each contact
       for (const contact of editableContacts) {
-        if (contact.name.trim() === '') continue; // Skip empty contacts
+        // Skip contacts with empty names
+        if (!contact.name || contact.name.trim() === '') continue;
 
-        if (contact.isNew) {
-          // Add new contact - remove the temporary id
+        if (contact.isNew === true) {
+          // Add new contact
           await addContact({
             name: contact.name,
             email: contact.email || '',
@@ -294,7 +296,7 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
             company_id: company.id
           });
         } else {
-          // Update existing contact - only send the fields that can be updated
+          // Update existing contact
           await updateContact(contact.id, {
             name: contact.name,
             email: contact.email || '',
@@ -309,7 +311,7 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
 
       onClose();
     } catch (error) {
-      console.error(error);
+      console.error('Erro ao salvar:', error);
       alert('Erro ao atualizar empresa');
     } finally {
       setLoading(false);
@@ -428,7 +430,7 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeContactRow(contact.id)}
+                      onClick={() => removeContactRow(contact.id, contact.isNew)}
                       className="absolute -top-2 -right-2 bg-white border border-slate-100 text-slate-400 p-1.5 rounded-full hover:text-red-500 hover:border-red-100 shadow-sm transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
