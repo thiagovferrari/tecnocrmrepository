@@ -232,7 +232,7 @@ export const CompanyDetail: React.FC = () => {
 
 // Edit Company Modal Component
 const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ company, onClose }) => {
-  const { updateCompany } = useData();
+  const { updateCompany, addContact, updateContact, deleteContact, refreshCompanyContacts } = useData();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -241,10 +241,63 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
     notes: company.notes || ''
   });
 
+  // Local state for contacts editing
+  const [editableContacts, setEditableContacts] = useState<(Contact & { isNew?: boolean; company_id?: string })[]>(
+    company.contacts?.map((c: Contact) => ({ ...c })) || []
+  );
+
+  const addNewContactRow = () => {
+    setEditableContacts([
+      ...editableContacts,
+      { id: crypto.randomUUID(), name: '', email: '', whatsapp: '', role: '', isNew: true, company_id: company.id }
+    ]);
+  };
+
+  const removeContactRow = (id: string) => {
+    setEditableContacts(editableContacts.filter(c => c.id !== id));
+  };
+
+  const updateLocalContact = (id: string, field: keyof Contact, value: string) => {
+    setEditableContacts(editableContacts.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
   const handleSave = async () => {
     setLoading(true);
     try {
+      // Update company basic info
       await updateCompany(company.id, formData);
+
+      // Get original contact IDs
+      const originalContactIds = company.contacts?.map((c: Contact) => c.id) || [];
+      const currentContactIds = editableContacts.filter(c => !c.isNew).map(c => c.id);
+
+      // Delete removed contacts
+      for (const originalId of originalContactIds) {
+        if (!currentContactIds.includes(originalId)) {
+          await deleteContact(originalId);
+        }
+      }
+
+      // Update existing and add new contacts
+      for (const contact of editableContacts) {
+        if (contact.name.trim() === '') continue; // Skip empty contacts
+
+        if (contact.isNew) {
+          // Add new contact
+          const { id, isNew, ...contactData } = contact;
+          await addContact({ ...contactData, company_id: company.id });
+        } else {
+          // Update existing contact
+          const { isNew, company_id, ...contactData } = contact;
+          await updateContact(contact.id, contactData);
+        }
+      }
+
+      // Refresh company contacts in state
+      await refreshCompanyContacts(company.id);
+
       onClose();
     } catch (error) {
       console.error(error);
@@ -256,8 +309,8 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
-        <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center shrink-0">
           <div>
             <h3 className="font-bold text-lg text-slate-800">Editar Dados da Empresa</h3>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Atualizar Informações</p>
@@ -266,39 +319,118 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-8 space-y-6">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nome da Empresa *</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium"
-              placeholder="Nome da empresa"
-            />
+        <div className="p-8 space-y-6 overflow-y-auto flex-1">
+          {/* Basic Info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nome da Empresa *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium"
+                placeholder="Nome da empresa"
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Segmento</label>
+              <input
+                type="text"
+                value={formData.segment}
+                onChange={e => setFormData({ ...formData, segment: e.target.value })}
+                className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                placeholder="Ex: Tecnologia"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Segmento</label>
-            <input
-              type="text"
-              value={formData.segment}
-              onChange={e => setFormData({ ...formData, segment: e.target.value })}
-              className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
-              placeholder="Ex: Tecnologia"
-            />
-          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Notas/Observações</label>
             <textarea
               value={formData.notes}
               onChange={e => setFormData({ ...formData, notes: e.target.value })}
-              rows={4}
-              className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all min-h-[100px]"
+              rows={3}
+              className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
               placeholder="Informações adicionais..."
             />
           </div>
+
+          {/* Contacts Section */}
+          <div className="space-y-4 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-800 uppercase tracking-tight flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-blue-500" /> Contatos da Empresa
+              </h4>
+              <button
+                type="button"
+                onClick={addNewContactRow}
+                className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition-colors flex items-center gap-1"
+              >
+                <User className="w-3.5 h-3.5" /> Adicionar Contato
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {editableContacts.length === 0 ? (
+                <p className="text-sm text-slate-400 italic py-4 text-center border border-dashed rounded-xl">
+                  Nenhum contato cadastrado. Clique em "Adicionar Contato" para incluir.
+                </p>
+              ) : (
+                editableContacts.map((contact, index) => (
+                  <div key={contact.id} className="p-4 border border-slate-100 rounded-xl bg-slate-50/30 space-y-3 relative group hover:border-slate-200 transition-colors">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nome do Contato</label>
+                        <input
+                          placeholder="Nome Completo"
+                          value={contact.name}
+                          onChange={e => updateLocalContact(contact.id, 'name', e.target.value)}
+                          className="w-full text-sm bg-white border border-slate-200 text-slate-900 rounded-lg px-3 py-2 outline-none focus:border-blue-500 placeholder:text-slate-300 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cargo</label>
+                        <input
+                          placeholder="Ex: Gerente Comercial"
+                          value={contact.role || ''}
+                          onChange={e => updateLocalContact(contact.id, 'role', e.target.value)}
+                          className="w-full text-sm bg-white border border-slate-200 text-slate-900 rounded-lg px-3 py-2 outline-none focus:border-blue-500 placeholder:text-slate-300 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">E-mail</label>
+                        <input
+                          placeholder="contato@empresa.com"
+                          type="email"
+                          value={contact.email || ''}
+                          onChange={e => updateLocalContact(contact.id, 'email', e.target.value)}
+                          className="w-full text-sm bg-white border border-slate-200 text-slate-900 rounded-lg px-3 py-2 outline-none focus:border-blue-500 placeholder:text-slate-300 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">WhatsApp / Telefone</label>
+                        <input
+                          placeholder="(00) 00000-0000"
+                          value={contact.whatsapp || ''}
+                          onChange={e => updateLocalContact(contact.id, 'whatsapp', e.target.value)}
+                          className="w-full text-sm bg-white border border-slate-200 text-slate-900 rounded-lg px-3 py-2 outline-none focus:border-blue-500 placeholder:text-slate-300 transition-all"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeContactRow(contact.id)}
+                      className="absolute -top-2 -right-2 bg-white border border-slate-100 text-slate-400 p-1.5 rounded-full hover:text-red-500 hover:border-red-100 shadow-sm transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
-        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex gap-4">
+        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex gap-4 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-white transition-all"
@@ -318,3 +450,4 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
     </div>
   );
 };
+

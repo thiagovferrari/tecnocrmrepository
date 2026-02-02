@@ -24,6 +24,11 @@ interface DataContextType {
     archiveRelation: (id: string) => Promise<void>;
     unarchiveRelation: (id: string) => Promise<void>;
     deleteRelation: (id: string) => Promise<void>;
+    // Contact management
+    addContact: (contact: Omit<Contact, 'id'> & { company_id: string }) => Promise<void>;
+    updateContact: (id: string, updates: Partial<Contact>) => Promise<void>;
+    deleteContact: (id: string) => Promise<void>;
+    refreshCompanyContacts: (companyId: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -47,6 +52,10 @@ const DataContext = createContext<DataContextType>({
     archiveRelation: async () => { },
     unarchiveRelation: async () => { },
     deleteRelation: async () => { },
+    addContact: async () => { },
+    updateContact: async () => { },
+    deleteContact: async () => { },
+    refreshCompanyContacts: async () => { },
 });
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -252,6 +261,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) throw error;
     };
 
+    // Contact management functions
+    const addContact = async (contact: Omit<Contact, 'id'> & { company_id: string }) => {
+        const { error } = await supabase.from('contacts').insert([contact]);
+        if (error) throw error;
+        // Refresh company contacts after adding
+        await refreshCompanyContacts(contact.company_id);
+    };
+
+    const updateContact = async (id: string, updates: Partial<Contact>) => {
+        const { error } = await supabase.from('contacts').update(updates).eq('id', id);
+        if (error) throw error;
+    };
+
+    const deleteContact = async (id: string) => {
+        const { error } = await supabase.from('contacts').delete().eq('id', id);
+        if (error) throw error;
+    };
+
+    const refreshCompanyContacts = async (companyId: string) => {
+        const { data: contactsData } = await supabase.from('contacts').select('*').eq('company_id', companyId);
+        // Update the companies state with new contacts
+        setCompanies(prev => prev.map(comp =>
+            comp.id === companyId
+                ? { ...comp, contacts: contactsData || [] }
+                : comp
+        ));
+    };
+
     return (
         <DataContext.Provider value={{
             events,
@@ -273,7 +310,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             unarchiveCompany,
             archiveRelation,
             unarchiveRelation,
-            deleteRelation
+            deleteRelation,
+            addContact,
+            updateContact,
+            deleteContact,
+            refreshCompanyContacts
         }}>
             {children}
         </DataContext.Provider>
