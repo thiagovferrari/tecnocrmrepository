@@ -281,13 +281,13 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
         await deleteContact(contactId);
       }
 
-      // Process each contact
+      // Process each contact - DON'T refresh until all are done
       for (const contact of editableContacts) {
         // Skip contacts with empty names
         if (!contact.name || contact.name.trim() === '') continue;
 
         if (contact.isNew === true) {
-          // Add new contact
+          // Add new contact - this will refresh automatically
           await addContact({
             name: contact.name,
             email: contact.email || '',
@@ -296,17 +296,17 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
             company_id: company.id
           });
         } else {
-          // Update existing contact
+          // Update existing contact (don't refresh yet, wait until end)
           await updateContact(contact.id, {
             name: contact.name,
             email: contact.email || '',
             whatsapp: contact.whatsapp || '',
             role: contact.role || ''
-          });
+          }, company.id);
         }
       }
 
-      // Refresh company contacts in state
+      // Final refresh to ensure state is synced (covers deletes too)
       await refreshCompanyContacts(company.id);
 
       onClose();

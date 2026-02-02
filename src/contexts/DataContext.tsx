@@ -269,14 +269,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await refreshCompanyContacts(contact.company_id);
     };
 
-    const updateContact = async (id: string, updates: Partial<Contact>) => {
+    const updateContact = async (id: string, updates: Partial<Contact>, companyId?: string) => {
         const { error } = await supabase.from('contacts').update(updates).eq('id', id);
         if (error) throw error;
+        // Refresh company contacts after updating if companyId is provided
+        if (companyId) {
+            await refreshCompanyContacts(companyId);
+        }
     };
 
-    const deleteContact = async (id: string) => {
+    const deleteContact = async (id: string, companyId?: string) => {
         const { error } = await supabase.from('contacts').delete().eq('id', id);
         if (error) throw error;
+        // Refresh company contacts after deleting if companyId is provided
+        if (companyId) {
+            await refreshCompanyContacts(companyId);
+        }
     };
 
     const refreshCompanyContacts = async (companyId: string) => {
