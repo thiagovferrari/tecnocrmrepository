@@ -106,9 +106,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .channel('public:companies')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'companies' }, (payload) => {
                 if (payload.eventType === 'INSERT') {
-                    setCompanies(prev => [...prev, payload.new as Company]);
+                    // Nova empresa não tem contatos ainda
+                    setCompanies(prev => [...prev, { ...payload.new as Company, contacts: [] }]);
                 } else if (payload.eventType === 'UPDATE') {
-                    setCompanies(prev => prev.map(item => item.id === payload.new.id ? payload.new as Company : item));
+                    // CRÍTICO: Preservar os contatos existentes ao atualizar a empresa
+                    setCompanies(prev => prev.map(item => {
+                        if (item.id === payload.new.id) {
+                            // Manter os contatos que já existiam
+                            return { ...payload.new as Company, contacts: item.contacts || [] };
+                        }
+                        return item;
+                    }));
                 } else if (payload.eventType === 'DELETE') {
                     setCompanies(prev => prev.filter(item => item.id !== payload.old.id));
                 }
@@ -189,32 +197,52 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const addCompany = async (company: Omit<Company, 'id' | 'created_at'>): Promise<Company> => {
-        // Separate contacts from company data if needed, or assume company object matches
-        // But table 'companies' has 'tags', etc. 'contacts' is a separate table.
-        // The previous store had nested contacts. Supabase needs separate inserts.
+        // Separar contacts dos dados da empresa (contacts vai em tabela separada)
         const { contacts, ...companyData } = company as any;
+
+        console.log('📤 Inserindo empresa no banco:', companyData);
 
         // Insert company
         const { data, error } = await supabase.from('companies').insert([companyData]).select();
 
-        if (error || !data) throw error;
+        if (error) {
+            console.error('❌ Erro ao inserir empresa:', error);
+            throw new Error(`Erro ao criar empresa: ${error.message}`);
+        }
+
+        if (!data || data.length === 0) {
+            console.error('❌ Nenhum dado retornado após inserir empresa');
+            throw new Error('Erro ao criar empresa: nenhum dado retornado');
+        }
 
         const newCompany = data[0];
+        console.log('✅ Empresa criada com ID:', newCompany.id);
 
         // Insert contacts if any
         if (contacts && contacts.length > 0) {
-            const contactsToInsert = contacts.map((c: any) => {
-                const { id, ...contactData } = c;  // Remove o id do frontend
-                return {
-                    ...contactData,
-                    company_id: newCompany.id,
-                };
-            });
-            await supabase.from('contacts').insert(contactsToInsert);
+            const contactsToInsert = contacts
+                .filter((c: any) => c.name && c.name.trim() !== '')
+                .map((c: any) => {
+                    const { id, ...contactData } = c;  // Remove o id do frontend
+                    return {
+                        ...contactData,
+                        company_id: newCompany.id,
+                    };
+                });
+
+            if (contactsToInsert.length > 0) {
+                console.log('📤 Inserindo contatos:', contactsToInsert.length);
+                const { error: contactsError } = await supabase.from('contacts').insert(contactsToInsert);
+
+                if (contactsError) {
+                    console.error('⚠️ Erro ao inserir contatos (empresa criada):', contactsError);
+                    // Não lançar erro aqui - a empresa já foi criada
+                } else {
+                    console.log('✅ Contatos inseridos com sucesso');
+                }
+            }
         }
 
-        // Return the company object (without contacts for now, or fetch them if needed contextually)
-        // Ideally we should return with contacts but for ID usage this is enough.
         return newCompany as Company;
     };
 
@@ -297,8 +325,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updateContact = async (id: string, updates: Partial<Contact>, companyId?: string) => {
-        const { error } = await supabase.from('contacts').update(updates).eq('id', id);
-        if (error) throw error;
+        console.log('📤 Atualizando contato no banco:', { id, updates });
+
+        // Primeiro, verificar se o contato existe
+        const { data: existingContact, error: fetchError } = await supabase
+            .from('contacts')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (fetchError || !existingContact) {
+            console.error('❌ Contato não encontrado para update:', id, fetchError);
+            throw new Error(`Contato com ID ${id} não encontrado no banco de dados`);
+        }
+
+        console.log('📋 Contato encontrado antes do update:', existingContact);
+
+        // Agora fazer o update
+        const { data, error } = await supabase
+            .from('contacts')
+            .update(updates)
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            console.error('❌ Erro ao atualizar contato:', error);
+            throw error;
+        }
+
+        if (!data || data.length === 0) {
+            console.error('❌ Update não retornou dados - pode não ter atualizado');
+            throw new Error('Update do contato falhou - nenhum dado retornado');
+        }
+
+        console.log('✅ Contato atualizado com sucesso:', data);
+
         // Refresh company contacts after updating if companyId is provided
         if (companyId) {
             await refreshCompanyContacts(companyId);
@@ -306,8 +367,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const deleteContact = async (id: string, companyId?: string) => {
+        console.log('🗑️ Deletando contato:', id);
+
         const { error } = await supabase.from('contacts').delete().eq('id', id);
-        if (error) throw error;
+
+        if (error) {
+            console.error('❌ Erro ao deletar contato:', error);
+            throw error;
+        }
+
+        console.log('✅ Contato deletado');
+
         // Refresh company contacts after deleting if companyId is provided
         if (companyId) {
             await refreshCompanyContacts(companyId);
@@ -315,7 +385,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const refreshCompanyContacts = async (companyId: string) => {
-        const { data: contactsData } = await supabase.from('contacts').select('*').eq('company_id', companyId);
+        console.log('🔄 Buscando contatos da empresa:', companyId);
+
+        const { data: contactsData, error } = await supabase.from('contacts').select('*').eq('company_id', companyId);
+
+        if (error) {
+            console.error('❌ Erro ao buscar contatos:', error);
+            return;
+        }
+
+        console.log('📋 Contatos encontrados:', contactsData?.length || 0, contactsData);
+
         // Update the companies state with new contacts
         setCompanies(prev => prev.map(comp =>
             comp.id === companyId

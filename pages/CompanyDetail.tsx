@@ -241,22 +241,34 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
     notes: company.notes || ''
   });
 
+  // DEBUG: Log dos contatos recebidos da empresa
+  console.log('🏢 EditCompanyModal - Empresa recebida:', company.id, company.name);
+  console.log('📋 Contatos originais da empresa:', company.contacts);
+
   // Local state for contacts editing - mark existing contacts with isNew: false
-  const [editableContacts, setEditableContacts] = useState<(Contact & { isNew?: boolean; company_id?: string })[]>(
-    company.contacts?.map((c: Contact) => ({ ...c, isNew: false })) || []
-  );
+  const [editableContacts, setEditableContacts] = useState<(Contact & { isNew?: boolean; company_id?: string })[]>(() => {
+    const contacts = company.contacts?.map((c: Contact) => {
+      console.log('📌 Mapeando contato existente:', c.id, c.name);
+      return { ...c, isNew: false };
+    }) || [];
+    console.log('📋 Total de contatos editáveis inicializados:', contacts.length);
+    return contacts;
+  });
 
   // Track which contacts were deleted
   const [deletedContactIds, setDeletedContactIds] = useState<string[]>([]);
 
   const addNewContactRow = () => {
+    const newId = crypto.randomUUID();
+    console.log('➕ Adicionando linha de novo contato com ID local:', newId);
     setEditableContacts([
       ...editableContacts,
-      { id: crypto.randomUUID(), name: '', email: '', whatsapp: '', role: '', isNew: true, company_id: company.id }
+      { id: newId, name: '', email: '', whatsapp: '', role: '', isNew: true, company_id: company.id }
     ]);
   };
 
   const removeContactRow = (id: string, isNew?: boolean) => {
+    console.log('🗑️ Removendo contato da lista local:', id, 'isNew:', isNew);
     // If it's an existing contact (not new), track it for deletion
     if (!isNew) {
       setDeletedContactIds([...deletedContactIds, id]);
@@ -273,46 +285,82 @@ const EditCompanyModal: React.FC<{ company: any; onClose: () => void }> = ({ com
   const handleSave = async () => {
     setLoading(true);
     try {
+      console.log('═══════════════════════════════════════════════');
+      console.log('💾 INICIANDO SALVAMENTO DA EMPRESA:', company.id);
+      console.log('═══════════════════════════════════════════════');
+
       // Update company basic info
+      console.log('📝 Atualizando dados básicos:', formData);
       await updateCompany(company.id, formData);
+      console.log('✅ Dados básicos da empresa atualizados');
 
       // Delete contacts that were removed by the user
-      for (const contactId of deletedContactIds) {
-        await deleteContact(contactId);
+      if (deletedContactIds.length > 0) {
+        console.log('🗑️ Contatos a deletar:', deletedContactIds);
+        for (const contactId of deletedContactIds) {
+          console.log('  → Deletando:', contactId);
+          await deleteContact(contactId, company.id);
+        }
+        console.log('✅ Contatos deletados');
       }
 
-      // Process each contact - DON'T refresh until all are done
-      for (const contact of editableContacts) {
-        // Skip contacts with empty names
-        if (!contact.name || contact.name.trim() === '') continue;
+      // Log all editable contacts for debugging
+      console.log('📋 TODOS os contatos editáveis:', editableContacts.map(c => ({
+        id: c.id,
+        name: c.name,
+        isNew: c.isNew
+      })));
+
+      // Process each contact - filter out empty ones first
+      const validContacts = editableContacts.filter(c => c.name && c.name.trim() !== '');
+      console.log('📝 Contatos válidos para processar:', validContacts.length);
+
+      for (const contact of validContacts) {
+        console.log('───────────────────────────────────');
+        console.log('🔍 Processando contato:', {
+          id: contact.id,
+          name: contact.name,
+          isNew: contact.isNew,
+          typeOfIsNew: typeof contact.isNew
+        });
 
         if (contact.isNew === true) {
-          // Add new contact - this will refresh automatically
+          // Add new contact
+          console.log('➕ AÇÃO: Adicionando novo contato');
           await addContact({
-            name: contact.name,
-            email: contact.email || '',
-            whatsapp: contact.whatsapp || '',
-            role: contact.role || '',
+            name: contact.name.trim(),
+            email: contact.email?.trim() || '',
+            whatsapp: contact.whatsapp?.trim() || '',
+            role: contact.role?.trim() || '',
             company_id: company.id
           });
+          console.log('✅ Novo contato adicionado');
         } else {
-          // Update existing contact (don't refresh yet, wait until end)
+          // Update existing contact
+          console.log('✏️ AÇÃO: Atualizando contato existente com ID:', contact.id);
           await updateContact(contact.id, {
-            name: contact.name,
-            email: contact.email || '',
-            whatsapp: contact.whatsapp || '',
-            role: contact.role || ''
-          }, company.id);
+            name: contact.name.trim(),
+            email: contact.email?.trim() || '',
+            whatsapp: contact.whatsapp?.trim() || '',
+            role: contact.role?.trim() || ''
+          });
+          console.log('✅ Contato atualizado');
         }
       }
 
-      // Final refresh to ensure state is synced (covers deletes too)
+      // Final refresh para sincronizar estado
+      console.log('═══════════════════════════════════════════════');
+      console.log('🔄 REFRESH FINAL DOS CONTATOS');
       await refreshCompanyContacts(company.id);
 
+      console.log('✅ SALVAMENTO CONCLUÍDO COM SUCESSO!');
+      console.log('═══════════════════════════════════════════════');
       onClose();
-    } catch (error) {
-      console.error('Erro ao salvar:', error);
-      alert('Erro ao atualizar empresa');
+    } catch (error: any) {
+      console.error('═══════════════════════════════════════════════');
+      console.error('❌ ERRO AO SALVAR:', error);
+      console.error('═══════════════════════════════════════════════');
+      alert(`Erro ao atualizar empresa: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }

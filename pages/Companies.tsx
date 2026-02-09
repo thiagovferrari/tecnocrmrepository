@@ -19,21 +19,34 @@ export const Companies: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) return;
+
+    if (!formData.name.trim()) {
+      alert('Por favor, informe o nome da empresa.');
+      return;
+    }
 
     setLoading(true);
     try {
       const validContacts = formData.contacts.filter(c => c.name.trim() !== '');
 
-      await addCompany({
-        ...formData,
-        contacts: validContacts.map(c => ({
-          name: c.name,
-          email: c.email,
-          whatsapp: c.whatsapp,
-          role: c.role
-        })) as any // Casting necessary as we are passing contacts structure slightly different from table
+      console.log('🏢 Tentando cadastrar empresa:', {
+        name: formData.name,
+        segment: formData.segment,
+        contactsCount: validContacts.length
       });
+
+      const newCompany = await addCompany({
+        name: formData.name.trim(),
+        segment: formData.segment.trim(),
+        contacts: validContacts.map(c => ({
+          name: c.name.trim(),
+          email: c.email?.trim() || '',
+          whatsapp: c.whatsapp?.trim() || '',
+          role: c.role?.trim() || ''
+        })) as any
+      });
+
+      console.log('✅ Empresa cadastrada com sucesso:', newCompany);
 
       setIsModalOpen(false);
       setFormData({
@@ -41,9 +54,9 @@ export const Companies: React.FC = () => {
         segment: '',
         contacts: [{ id: crypto.randomUUID(), name: '', email: '', whatsapp: '', role: '' }]
       });
-    } catch (error) {
-      console.error(error);
-      alert('Erro ao salvar empresa');
+    } catch (error: any) {
+      console.error('❌ Erro ao salvar empresa:', error);
+      alert(`Erro ao salvar empresa: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }

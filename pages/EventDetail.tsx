@@ -259,23 +259,41 @@ const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; }> = ({
     setError('');
     setLoading(true);
     try {
-      let finalCompanyId = selectedCompanyId;
+      let finalCompanyId: string | undefined = undefined;
 
       if (isCreatingCompany) {
-        if (!newCompanyData.name) throw new Error('Dê um nome para a empresa.');
+        // Criando nova empresa
+        if (!newCompanyData.name.trim()) {
+          throw new Error('Dê um nome para a empresa.');
+        }
 
         const validContacts = newCompanyData.contacts.filter(c => c.name.trim() !== '');
 
         const newCompany = await addCompany({
-          name: newCompanyData.name,
-          segment: newCompanyData.segment,
+          name: newCompanyData.name.trim(),
+          segment: newCompanyData.segment.trim(),
           contacts: validContacts as any
         });
 
-        finalCompanyId = newCompany?.id;
+        if (!newCompany?.id) {
+          throw new Error('Erro ao criar empresa. Tente novamente.');
+        }
+
+        finalCompanyId = newCompany.id;
+      } else {
+        // Selecionando empresa existente
+        if (!selectedCompanyId || selectedCompanyId.trim() === '') {
+          throw new Error('Selecione uma empresa do banco de dados.');
+        }
+        finalCompanyId = selectedCompanyId;
       }
 
-      if (!finalCompanyId && !isCreatingCompany) throw new Error('Selecione uma empresa.');
+      // Validação final OBRIGATÓRIA antes de vincular
+      if (!finalCompanyId) {
+        throw new Error('Nenhuma empresa selecionada ou criada.');
+      }
+
+      console.log('🔗 Vinculando empresa ao evento:', { event_id: eventId, company_id: finalCompanyId, status });
 
       await addRelation({
         event_id: eventId,
@@ -283,12 +301,14 @@ const AddRelationModal: React.FC<{ eventId: string; onClose: () => void; }> = ({
         status: status,
         value_expected: Number(expectedValue) || 0,
         next_action: '',
-        next_action_date: null, // ← ERA '' AGORA É null!
+        next_action_date: null,
         responsible: ''
       });
+
+      console.log('✅ Empresa vinculada com sucesso!');
       onClose();
     } catch (e: any) {
-      console.error(e);
+      console.error('❌ Erro ao vincular empresa:', e);
       setError(e.message || 'Erro ao vincular.');
     } finally {
       setLoading(false);
