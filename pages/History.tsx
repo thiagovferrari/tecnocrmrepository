@@ -32,8 +32,8 @@ export const History: React.FC = () => {
 
             if (error) {
                 // Ignore error if table doesn't exist yet (migration not run)
-                if (error.code === '42P01') {
-                    setError('A tabela de auditoria ainda não foi criada no banco de dados. Por favor, execute o script SQL setup_audit_logs.sql no painel do Supabase.');
+                if (error.code === '42P01' || error.message?.includes('schema cache')) {
+                    setError('A tabela de auditoria ainda não foi criada no banco de dados. Por favor, acesse o painel do Supabase, vá no SQL Editor e cole/execute o código que está no arquivo setup_audit_logs.sql para ativar o histórico.');
                 } else {
                     throw error;
                 }
