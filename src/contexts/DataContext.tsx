@@ -65,12 +65,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const DATA_FETCH_TIMEOUT_MS = 15000;
+
     const fetchData = async () => {
         setLoading(true);
-        const { data: eventsData } = await supabase.from('events').select('*');
-        const { data: companiesData } = await supabase.from('companies').select('*');
-        const { data: relationsData } = await supabase.from('event_companies').select('*');
-        const { data: contactsData } = await supabase.from('contacts').select('*');
+
+        // Timeout: se o banco demorar >15s, libera o loading para não travar
+        const timeoutPromise = new Promise<null>((resolve) =>
+            setTimeout(() => {
+                console.warn('DataContext timeout: queries demoraram mais de 15s');
+                resolve(null);
+            }, DATA_FETCH_TIMEOUT_MS)
+        );
+
+        // Todas as 4 queries em PARALELO (antes eram sequenciais)
+        const fetchPromise = Promise.all([
+            supabase.from('events').select('*'),
+            supabase.from('companies').select('*'),
+            supabase.from('event_companies').select('*'),
+            supabase.from('contacts').select('*'),
+        ]);
+
+        const result = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (!result) {
+            // Timeout: libera o loading com dados vazios
+            setLoading(false);
+            return;
+        }
+
+        const [
+            { data: eventsData },
+            { data: companiesData },
+            { data: relationsData },
+            { data: contactsData },
+        ] = result;
 
         // Manually join contacts to companies
         const companiesWithContacts = (companiesData || []).map(comp => ({

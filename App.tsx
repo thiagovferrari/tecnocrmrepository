@@ -31,72 +31,83 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 function App() {
   return (
     <AuthProvider>
-      <DataProvider>
-        <HashRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+      <HashRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-            <Route path="/" element={
-              <PrivateRoute>
+          <Route path="/" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <Dashboard />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-            <Route path="/events" element={
-              <PrivateRoute>
+          <Route path="/events" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <Events />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-            <Route path="/events/:id" element={
-              <PrivateRoute>
+          <Route path="/events/:id" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <EventDetail />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-            <Route path="/companies" element={
-              <PrivateRoute>
+          <Route path="/companies" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <Companies />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-            <Route path="/companies/:id" element={
-              <PrivateRoute>
+          <Route path="/companies/:id" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <CompanyDetail />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-            <Route path="/archived" element={
-              <PrivateRoute>
+          <Route path="/archived" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <Archived />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-
-            <Route path="/settings" element={
-              <PrivateRoute>
+          <Route path="/settings" element={
+            <PrivateRoute>
+              <DataProvider>
                 <Layout>
                   <Settings />
                 </Layout>
-              </PrivateRoute>
-            } />
+              </DataProvider>
+            </PrivateRoute>
+          } />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </HashRouter>
-      </DataProvider>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
     </AuthProvider>
   );
 }
