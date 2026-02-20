@@ -12,8 +12,51 @@ interface AuditLog {
     old_data: any;
     new_data: any;
     user_id: string;
+    user_email?: string;
     created_at: string;
 }
+
+const FIELD_LABELS: Record<string, string> = {
+    name: 'Nome',
+    email: 'E-mail',
+    whatsapp: 'WhatsApp',
+    role: 'Cargo',
+    segment: 'Segmento',
+    notes: 'Observações',
+    tags: 'Tags',
+    archived: 'Arquivado',
+    start_date: 'Data de Início',
+    end_date: 'Data Término',
+    city: 'Cidade',
+    venue: 'Local',
+    status: 'Status',
+    value_expected: 'Valor Esperado',
+    value_closed: 'Valor Fechado',
+    next_action: 'Próxima Ação',
+    next_action_date: 'Data da Próxima Ação',
+    responsible: 'Responsável',
+    company_id: 'ID da Empresa',
+    event_id: 'ID do Evento'
+};
+
+const formatValue = (key: string, value: any): string => {
+    if (value === null || value === undefined || value === '') return 'Vazio';
+    if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+    if (key.startsWith('value_') && typeof value === 'number') {
+        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    }
+    if (key.includes('date') && typeof value === 'string') {
+        try {
+            // Check if it's strictly a date
+            if (value.includes('T') || value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return format(new Date(value), 'dd/MM/yyyy');
+            }
+        } catch {
+            // fallback
+        }
+    }
+    return String(value);
+};
 
 export const History: React.FC = () => {
     const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -24,11 +67,7 @@ export const History: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const { data, error } = await supabase
-                .from('audit_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(100);
+            const { data, error } = await supabase.rpc('get_audit_logs');
 
             if (error) {
                 // Ignore error if table doesn't exist yet (migration not run)
@@ -86,11 +125,14 @@ export const History: React.FC = () => {
         if (!oldData && newData) {
             // INSERT
             return (
-                <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 mt-2 font-mono overflow-x-auto">
+                <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded border border-slate-100 mt-2 overflow-x-auto space-y-1">
                     {Object.entries(newData)
-                        .filter(([k, v]) => !['id', 'created_at', 'updated_at', 'user_id'].includes(k) && v !== null && v !== '')
+                        .filter(([k, v]) => !['id', 'created_at', 'updated_at', 'user_id', 'company_id', 'event_id'].includes(k) && v !== null && v !== '')
                         .map(([k, v]) => (
-                            <div key={k} className="whitespace-pre-wrap"><span className="text-slate-400 font-bold">{k}:</span> {JSON.stringify(v)}</div>
+                            <div key={k} className="flex gap-2">
+                                <span className="text-slate-500 font-semibold w-32 shrink-0">{FIELD_LABELS[k] || k}:</span>
+                                <span className="text-slate-800 font-medium">{formatValue(k, v)}</span>
+                            </div>
                         ))
                     }
                 </div>
@@ -122,20 +164,20 @@ export const History: React.FC = () => {
             }
         });
 
-        if (changes.length === 0) return <span className="text-slate-400 italic text-xs mt-2 block">Nenhuma alteração visível nos dados.</span>;
+        if (changes.length === 0) return <span className="text-slate-400 italic text-xs mt-2 block">Nenhuma alteração de dados rastreada.</span>;
 
         return (
-            <div className="mt-2 space-y-1">
+            <div className="mt-3 space-y-1.5">
                 {changes.map(change => (
-                    <div key={change.key} className="flex items-center gap-2 text-xs font-mono bg-slate-50 p-1.5 rounded border border-slate-100">
-                        <span className="text-slate-500 font-bold w-1/4 truncate" title={change.key}>{change.key}:</span>
-                        <div className="flex-1 flex items-center gap-2 overflow-hidden">
-                            <span className="bg-red-50 text-red-600 px-1 rounded border border-red-100 truncate flex-1" title={JSON.stringify(change.old)}>
-                                {change.old === null || change.old === undefined ? 'vazio' : JSON.stringify(change.old).replace(/"/g, '')}
+                    <div key={change.key} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs bg-slate-50/80 p-2 rounded-lg border border-slate-100">
+                        <span className="text-slate-600 font-bold w-full sm:w-32 shrink-0">{FIELD_LABELS[change.key] || change.key}</span>
+                        <div className="flex-1 flex items-center gap-2">
+                            <span className="text-slate-400 line-through bg-white px-2 py-0.5 rounded border border-slate-100">
+                                {formatValue(change.key, change.old)}
                             </span>
-                            <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span className="bg-green-50 text-green-700 px-1 rounded border border-green-200 truncate flex-1" title={JSON.stringify(change.new)}>
-                                {change.new === null || change.new === undefined ? 'vazio' : JSON.stringify(change.new).replace(/"/g, '')}
+                            <ArrowRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            <span className="text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded border border-green-100">
+                                {formatValue(change.key, change.new)}
                             </span>
                         </div>
                     </div>
@@ -210,9 +252,9 @@ export const History: React.FC = () => {
                                     </div>
 
                                     <div className="shrink-0 flex flex-col items-end gap-1 text-right">
-                                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                            <User className="w-3.5 h-3.5 text-slate-400" />
-                                            {log.user_id ? log.user_id.split('-')[0] : 'Sistema'}
+                                        <span className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                                            <User className="w-4 h-4 text-slate-400" />
+                                            {log.user_email || 'Sistema / Bot'}
                                         </span>
                                         <span className="text-[10px] text-slate-400 font-medium">
                                             {format(new Date(log.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}

@@ -489,7 +489,11 @@ const EditRelationModal: React.FC<{ relationId: string; onClose: () => void; }> 
   const handleSave = async () => {
     setLoading(true);
     try {
-      await updateRelation(relationId, formData);
+      const payload = {
+        ...formData,
+        next_action_date: formData.next_action_date === '' ? null : formData.next_action_date
+      };
+      await updateRelation(relationId, payload);
       onClose();
     } catch (error) {
       console.error(error);
