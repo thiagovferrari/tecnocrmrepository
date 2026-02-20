@@ -9,6 +9,7 @@ import { Companies } from './pages/Companies';
 import { CompanyDetail } from './pages/CompanyDetail';
 import { Archived } from './pages/Archived';
 import { Settings } from './pages/Settings';
+import { History } from './pages/History';
 import { Login } from './pages/Login';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { DataProvider } from './src/contexts/DataContext';
@@ -100,6 +101,16 @@ function App() {
               <DataProvider>
                 <Layout>
                   <Settings />
+                </Layout>
+              </DataProvider>
+            </PrivateRoute>
+          } />
+
+          <Route path="/history" element={
+            <PrivateRoute>
+              <DataProvider>
+                <Layout>
+                  <History />
                 </Layout>
               </DataProvider>
             </PrivateRoute>
